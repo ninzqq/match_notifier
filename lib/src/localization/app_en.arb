@@ -1,0 +1,6 @@
+{
+  "appTitle": "hltv_match_notifier",
+  "@appTitle": {
+    "description": "The title of the application"
+  }
+}
