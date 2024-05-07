@@ -1,7 +1,6 @@
-import 'package:chaleno/chaleno.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:html/parser.dart';
+import 'package:html/dom.dart' as dom;
 
 /// Displays detailed information about a SampleItem.
 class TeamDetailsView extends StatelessWidget {
@@ -30,11 +29,25 @@ class TeamDetailsView extends StatelessWidget {
   }
 
   fetchMatches() async {
-    String hltv = 'https://www.hltv.org/team/';
+    const String hltv = 'https://www.hltv.org/team/';
     String teamPage = '$hltv$address';
-    var parser = await Chaleno().load(teamPage);
-    List<Result> results = parser!.getElementsByClassName('standard-headline');
-    results.map((item) => print(item.innerHTML));
-    return results;
+    final url = Uri.parse(teamPage);
+    final response = await http.get(url);
+    dom.Document html = dom.Document.html(response.body);
+
+    final upcomingMatchesTable = html
+        .querySelectorAll(
+            '.standard-headline + table > tbody > tr > td.matchpage-button-cell')
+        .map((e) => e.innerHtml.trim());
+
+    //final upcomingMatches = upcomingMatchesTable
+    //    .querySelectorAll('.standard-headline + table > tbody > tr > td ')
+    //    .map((e) => e.innerHtml.trim());
+
+    print(upcomingMatchesTable.length);
+
+    for (final match in upcomingMatchesTable) {
+      print(match);
+    }
   }
 }
