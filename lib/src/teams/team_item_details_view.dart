@@ -20,7 +20,7 @@ class TeamDetailsView extends StatelessWidget {
     var matches = fetchMatches();
     return Scaffold(
       appBar: AppBar(
-        title: Text('$team details'),
+        title: Text('$team matches'),
       ),
       body: const Center(
         child: Text('More Information Here'),
@@ -35,19 +35,41 @@ class TeamDetailsView extends StatelessWidget {
     final response = await http.get(url);
     dom.Document html = dom.Document.html(response.body);
 
-    final upcomingMatchesTable = html
-        .querySelectorAll(
-            '.standard-headline + table > tbody > tr > td.matchpage-button-cell')
-        .map((e) => e.innerHtml.trim());
+    final checkForNoMatches = html
+        .querySelector(
+            '.standard-headline + div.empty-state + div.section-spacer')
+        ?.innerHtml
+        .trim();
 
-    //final upcomingMatches = upcomingMatchesTable
-    //    .querySelectorAll('.standard-headline + table > tbody > tr > td ')
-    //    .map((e) => e.innerHtml.trim());
+    if (checkForNoMatches != null) {
+      print('No upcoming matches');
+      return 'No upcoming matches';
+    } else {
+      final upcomingMatchesEventTitle = html
+          .querySelectorAll(
+              '.standard-headline + table > thead > tr > th.text-ellipsis > a + div.')
+          .map((e) => e.innerHtml.trim());
 
-    print(upcomingMatchesTable.length);
+      final upcomingMatchesDates = html
+          .querySelectorAll(
+              '.standard-headline + table > tbody > tr > td.date-cell')
+          .map((e) => e.innerHtml.trim());
 
-    for (final match in upcomingMatchesTable) {
-      print(match);
+      final upcomingMatchesHrefs = html
+          .querySelectorAll(
+              '.standard-headline + table > tbody > tr > td.matchpage-button-cell')
+          .map((e) => e.innerHtml.trim());
+
+      print('Event: $upcomingMatchesEventTitle');
+      print('Match count: ${upcomingMatchesHrefs.length}');
+
+      for (int i = 0; i < upcomingMatchesHrefs.length; i++) {
+        var link = upcomingMatchesHrefs.elementAt(i).split('"');
+        var date = upcomingMatchesDates.elementAt(i).split('"');
+        var dt = DateTime.fromMillisecondsSinceEpoch(int.parse(date[3]));
+
+        print('Link: ${link[1]} | Date: $dt');
+      }
     }
   }
 }
