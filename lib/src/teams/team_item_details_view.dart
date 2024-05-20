@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:hltv_match_notifier/src/models/local_models.dart';
 import 'package:http/http.dart' as http;
 import 'package:html/dom.dart' as dom;
+import 'next_match_item.dart';
+import 'package:provider/provider.dart';
 
 /// Displays detailed information about a SampleItem.
 class TeamDetailsView extends StatelessWidget {
@@ -17,18 +20,44 @@ class TeamDetailsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var matches = fetchMatches();
+    var nextMatch = context.read<NextMatchItem>();
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('$team matches'),
-      ),
-      body: const Center(
-        child: Text('More Information Here'),
+          title: Text(
+        '$team matches',
+      )),
+      body: FutureBuilder(
+        future: fetchMatches(team, nextMatch),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return const Text('Error...');
+          }
+
+          if (snapshot.connectionState == ConnectionState.done) {
+            if (snapshot.hasError) {
+              return const Text('Error...');
+            } else if (snapshot.hasData) {
+              checkNextMatchUrgency(nextMatch.date);
+              return Center(
+                child: nextMatch.nextMatchFound
+                    ? Text('Next match for $team:\n${nextMatch.date}')
+                    : Text('No upcoming matches for $team'),
+              );
+            } else {
+              return const Text('Some shit? Errors....');
+            }
+          } else {
+            return const Center(
+              child: Text('Loading matches... '),
+            );
+          }
+        },
       ),
     );
   }
 
-  fetchMatches() async {
+  Future fetchMatches(team, nextMatch) async {
     const String hltv = 'https://www.hltv.org/team/';
     String teamPage = '$hltv$address';
     final url = Uri.parse(teamPage);
@@ -41,9 +70,15 @@ class TeamDetailsView extends StatelessWidget {
         ?.innerHtml
         .trim();
 
-    if (checkForNoMatches != null) {
+    final nextUpcomingMatchDate = html
+        .querySelector('.standard-headline + table > tbody > tr > td.date-cell')
+        ?.innerHtml
+        .trim();
+
+    if (checkForNoMatches != null || nextUpcomingMatchDate == null) {
       print('No upcoming matches');
-      return 'No upcoming matches';
+      nextMatch.set(team, DateTime.now(), false, true);
+      return 0;
     } else {
       final upcomingMatchesEventTitle = html
           .querySelectorAll(
@@ -60,16 +95,32 @@ class TeamDetailsView extends StatelessWidget {
               '.standard-headline + table > tbody > tr > td.matchpage-button-cell')
           .map((e) => e.innerHtml.trim());
 
-      print('Event: $upcomingMatchesEventTitle');
+      print('Event: ${upcomingMatchesEventTitle}');
       print('Match count: ${upcomingMatchesHrefs.length}');
+      print('Next match at: $nextUpcomingMatchDate');
 
+      DateTime dt;
       for (int i = 0; i < upcomingMatchesHrefs.length; i++) {
         var link = upcomingMatchesHrefs.elementAt(i).split('"');
         var date = upcomingMatchesDates.elementAt(i).split('"');
-        var dt = DateTime.fromMillisecondsSinceEpoch(int.parse(date[3]));
+        dt = DateTime.fromMillisecondsSinceEpoch(int.parse(date[3]));
 
         print('Link: ${link[1]} | Date: $dt');
       }
+      dt = DateTime.fromMillisecondsSinceEpoch(
+          int.parse(nextUpcomingMatchDate.split('"')[3]));
+      nextMatch.set(team, dt, true, true);
+      return 0;
+    }
+  }
+
+  checkNextMatchUrgency(DateTime date) {
+    var now = DateTime.now();
+    var dayFromNow = now.add(const Duration(days: 1));
+    if (date.isBefore(dayFromNow)) {
+      print('Less than 1 day away!');
+    } else {
+      print('Faar away');
     }
   }
 }
