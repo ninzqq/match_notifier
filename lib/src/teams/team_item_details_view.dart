@@ -76,7 +76,6 @@ class TeamDetailsView extends StatelessWidget {
         .trim();
 
     if (checkForNoMatches != null || nextUpcomingMatchDate == null) {
-      print('No upcoming matches');
       nextMatch.set(team, DateTime.now(), false, true);
       return 0;
     } else {
@@ -115,12 +114,20 @@ class TeamDetailsView extends StatelessWidget {
   }
 
   checkNextMatchUrgency(DateTime date) {
-    var now = DateTime.now();
-    var dayFromNow = now.add(const Duration(days: 1));
-    if (date.isBefore(dayFromNow)) {
+    var roundedDate = nearestQuarter(date);
+    var roundedNow = nearestQuarter(DateTime.now());
+    var dayFromNow = roundedNow.add(const Duration(days: 1));
+    if (roundedDate.isAtSameMomentAs(roundedNow)) {
+      print('No upcoming matches');
+    } else if (roundedDate.isBefore(dayFromNow)) {
       print('Less than 1 day away!');
     } else {
       print('Faar away');
     }
+  }
+
+  DateTime nearestQuarter(DateTime val) {
+    return DateTime(val.year, val.month, val.day, val.hour,
+        [0, 15, 30, 45, 60][(val.minute / 15).floor()]);
   }
 }
